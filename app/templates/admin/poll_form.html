@@ -1,0 +1,165 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if poll %}编辑投票{% else %}创建投票{% endif %} - 管理后台{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">仪表盘</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.polls') }}">投票管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    {% if poll %}编辑投票{% else %}创建投票{% endif %}
+                </li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    {% if poll %}📝 编辑投票{% else %}➕ 创建新投票{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="title" class="form-label required">投票标题</label>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="title" 
+                            name="title"
+                            value="{{ poll.title if poll else '' }}"
+                            placeholder="请输入投票标题"
+                            required
+                        >
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">投票描述</label>
+                        <textarea 
+                            class="form-control" 
+                            id="description" 
+                            name="description"
+                            rows="3"
+                            placeholder="请输入投票描述（可选）"
+                        >{{ poll.description if poll else '' }}</textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="vote_type" class="form-label required">投票类型</label>
+                            <select class="form-select" id="vote_type" name="vote_type" required>
+                                <option value="single" {% if poll and poll.vote_type == 'single' %}selected{% endif %}>单选</option>
+                                <option value="multiple" {% if poll and poll.vote_type == 'multiple' %}selected{% endif %}>多选</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="maxChoicesDiv" style="display: {% if poll and poll.vote_type == 'multiple' %}block{% else %}none{% endif %};">
+                            <label for="max_choices" class="form-label required">最多可选数量</label>
+                            <input 
+                                type="number" 
+                                class="form-control" 
+                                id="max_choices" 
+                                name="max_choices"
+                                value="{{ poll.max_choices if poll else 2 }}"
+                                min="2"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="start_time" class="form-label">开始时间</label>
+                            <input 
+                                type="datetime-local" 
+                                class="form-control" 
+                                id="start_time" 
+                                name="start_time"
+                                value="{{ poll.start_time.strftime('%Y-%m-%dT%H:%M') if poll and poll.start_time else '' }}"
+                            >
+                        </div>
+                        <div class="col-md-6">
+                            <label for="end_time" class="form-label">结束时间</label>
+                            <input 
+                                type="datetime-local" 
+                                class="form-control" 
+                                id="end_time" 
+                                name="end_time"
+                                value="{{ poll.end_time.strftime('%Y-%m-%dT%H:%M') if poll and poll.end_time else '' }}"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input 
+                                class="form-check-input" 
+                                type="checkbox" 
+                                id="is_active" 
+                                name="is_active"
+                                {% if poll and poll.is_active %}checked{% endif %}
+                            >
+                            <label class="form-check-label" for="is_active">
+                                立即激活此投票
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="options" class="form-label required">投票选项</label>
+                        <textarea 
+                            class="form-control" 
+                            id="options" 
+                            name="options"
+                            rows="6"
+                            placeholder="每行一个选项，例如：
+选项1
+选项2
+选项3"
+                            required
+                        >{{ options_text if options_text else '' }}</textarea>
+                        <div class="form-text">
+                            请每行输入一个选项，至少需要2个选项。
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('admin.polls') }}" class="btn btn-secondary">
+                            ← 返回
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            💾 保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const voteTypeSelect = document.getElementById('vote_type');
+    const maxChoicesDiv = document.getElementById('maxChoicesDiv');
+    const maxChoicesInput = document.getElementById('max_choices');
+    
+    voteTypeSelect.addEventListener('change', function() {
+        if (this.value === 'multiple') {
+            maxChoicesDiv.style.display = 'block';
+            maxChoicesInput.required = true;
+        } else {
+            maxChoicesDiv.style.display = 'none';
+            maxChoicesInput.required = false;
+        }
+    });
+});
+</script>
+{% endblock %}
