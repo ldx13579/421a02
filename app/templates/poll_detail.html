@@ -1,0 +1,585 @@
+{% extends "base.html" %}
+
+{% block title %}{{ poll.title }} - 在线投票{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">首页</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ poll.title }}</li>
+            </ol>
+        </nav>
+
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="card-title mb-0">{{ poll.title }}</h4>
+            </div>
+            <div class="card-body">
+                {% if poll.description %}
+                    <p class="text-muted mb-4">{{ poll.description }}</p>
+                {% endif %}
+
+                {% if can_vote %}
+                    <form id="voteForm">
+                        <input type="hidden" name="poll_id" value="{{ poll.id }}">
+                        
+                        <div class="mb-4">
+                            <h5 class="mb-3">
+                                投票类型：
+                                <span class="badge {% if poll.vote_type == 'single' %}bg-success{% else %}bg-info{% endif %}">
+                                    {% if poll.vote_type == 'single' %}单选{% else %}多选(最多{{ poll.max_choices }}项){% endif %}
+                                </span>
+                            </h5>
+                            
+                            <div class="list-group">
+                                {% for option in options %}
+                                    <label class="list-group-item list-group-item-action vote-option">
+                                        <input 
+                                            type="{% if poll.vote_type == 'single' %}radio{% else %}checkbox{% endif %}"
+                                            name="option_ids"
+                                            value="{{ option.id }}"
+                                            class="me-2"
+                                            {% if poll.vote_type == 'single' %}required{% endif %}
+                                        >
+                                        {{ option.text }}
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h5 class="mb-3">验证码</h5>
+                            <div class="d-flex align-items-center">
+                                <div class="captcha-wrapper me-3">
+                                    <img id="captchaImage" src="{{ url_for('main.captcha') }}" alt="验证码" class="border rounded">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary refresh-btn" onclick="refreshCaptcha()">
+                                        🔄
+                                    </button>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    name="captcha" 
+                                    id="captchaInput"
+                                    class="form-control" 
+                                    style="width: 150px;"
+                                    placeholder="输入验证码"
+                                    required
+                                    maxlength="4"
+                                >
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                提交投票
+                            </button>
+                            <a href="{{ url_for('main.results', poll_id=poll.id) }}" class="btn btn-outline-secondary">
+                                查看投票结果
+                            </a>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">⚠️ 无法投票</h5>
+                        <p class="mb-0">{{ vote_message }}</p>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('main.results', poll_id=poll.id) }}" class="btn btn-primary btn-lg">
+                            查看投票结果
+                        </a>
+                        <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+                            返回首页
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="modal fade" id="successModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title">投票成功！</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3">感谢您的投票！您可以查看实时投票结果。</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                        <a href="{{ url_for('main.results', poll_id=poll.id) }}" class="btn btn-primary">查看结果</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.selected-count-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-left: 8px;
+    transition: all 0.3s ease;
+}
+
+.selected-count-badge.normal {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.selected-count-badge.warning {
+    background: #fff3e0;
+    color: #f57c00;
+    animation: pulse-warning 1s ease-in-out infinite;
+}
+
+.selected-count-badge.max {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.vote-option.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    background-color: #f5f5f5 !important;
+}
+
+.vote-option input:checked + span,
+.vote-option:has(input:checked) {
+    background-color: #e3f2fd !important;
+    border-color: #2196f3 !important;
+}
+
+.message-container {
+    position: relative;
+    min-height: 0;
+    transition: min-height 0.3s ease;
+}
+
+.alert {
+    margin-bottom: 1rem;
+    animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.submit-btn-loading {
+    pointer-events: none;
+    position: relative;
+}
+
+.btn-shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+}
+
+.captcha-input-wrapper {
+    position: relative;
+}
+
+.captcha-status-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    display: none;
+}
+
+.captcha-status-icon.valid {
+    color: #4caf50;
+    display: block;
+}
+
+.captcha-status-icon.invalid {
+    color: #f44336;
+    display: block;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    'use strict';
+
+    let isSubmitting = false;
+    let currentMessage = null;
+    let messageTimeout = null;
+
+    const pollId = {{ poll.id }};
+    const voteType = '{{ poll.vote_type }}';
+    const maxChoices = {{ poll.max_choices }};
+
+    function showMessage(message, type = 'info', autoHide = true) {
+        clearExistingMessage();
+
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.setAttribute('role', 'alert');
+        alertDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <span class="me-2">${getTypeIcon(type)}</span>
+                <span>${message}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        const container = document.querySelector('.card-body');
+        if (container) {
+            container.insertBefore(alertDiv, container.firstChild);
+            currentMessage = alertDiv;
+
+            if (autoHide) {
+                messageTimeout = setTimeout(() => {
+                    clearExistingMessage();
+                }, 4000);
+            }
+
+            alertDiv.addEventListener('close.bs.alert', () => {
+                currentMessage = null;
+                clearTimeout(messageTimeout);
+            });
+        }
+    }
+
+    function clearExistingMessage() {
+        if (currentMessage && currentMessage.parentNode) {
+            currentMessage.remove();
+        }
+        currentMessage = null;
+        clearTimeout(messageTimeout);
+    }
+
+    function getTypeIcon(type) {
+        const icons = {
+            'success': '✅',
+            'danger': '❌',
+            'warning': '⚠️',
+            'info': 'ℹ️',
+            'primary': 'ℹ️'
+        };
+        return icons[type] || icons['info'];
+    }
+
+    function shakeButton(button) {
+        button.classList.add('btn-shake');
+        setTimeout(() => {
+            button.classList.remove('btn-shake');
+        }, 500);
+    }
+
+    function updateSelectedCount() {
+        if (voteType !== 'multiple') return;
+
+        const checkboxes = document.querySelectorAll('input[name="option_ids"]:checked');
+        const count = checkboxes.length;
+        
+        let badge = document.getElementById('selectedCountBadge');
+        if (!badge) {
+            const typeHeading = document.querySelector('h5.mb-3');
+            if (typeHeading) {
+                badge = document.createElement('span');
+                badge.id = 'selectedCountBadge';
+                badge.className = 'selected-count-badge';
+                typeHeading.appendChild(badge);
+            }
+        }
+
+        if (badge) {
+            badge.textContent = `已选 ${count}/${maxChoices}`;
+            badge.classList.remove('normal', 'warning', 'max');
+            
+            if (count === maxChoices) {
+                badge.classList.add('max');
+            } else if (count > maxChoices * 0.7) {
+                badge.classList.add('warning');
+            } else {
+                badge.classList.add('normal');
+            }
+        }
+
+        const allCheckboxes = document.querySelectorAll('input[name="option_ids"]');
+        allCheckboxes.forEach(checkbox => {
+            const label = checkbox.closest('.vote-option');
+            if (!checkbox.checked && count >= maxChoices) {
+                label.classList.add('disabled');
+            } else {
+                label.classList.remove('disabled');
+            }
+        });
+    }
+
+    function validateMultiSelect() {
+        if (voteType !== 'multiple') return true;
+
+        const checked = document.querySelectorAll('input[name="option_ids"]:checked');
+        const count = checked.length;
+
+        if (count === 0) {
+            showMessage('请至少选择一个投票选项', 'warning');
+            return false;
+        }
+
+        if (count > maxChoices) {
+            showMessage(`最多只能选择 ${maxChoices} 个选项，当前已选 ${count} 个`, 'warning');
+            return false;
+        }
+
+        return true;
+    }
+
+    function validateSingleSelect() {
+        if (voteType !== 'single') return true;
+
+        const checked = document.querySelector('input[name="option_ids"]:checked');
+        if (!checked) {
+            showMessage('请选择一个投票选项', 'warning');
+            return false;
+        }
+
+        return true;
+    }
+
+    function validateCaptcha() {
+        const captchaInput = document.getElementById('captchaInput');
+        if (!captchaInput) return false;
+
+        const value = captchaInput.value.trim();
+        
+        if (!value) {
+            showMessage('请输入验证码', 'warning');
+            captchaInput.focus();
+            shakeButton(captchaInput);
+            return false;
+        }
+
+        if (value.length !== 4) {
+            showMessage('验证码为4位字符', 'warning');
+            captchaInput.focus();
+            return false;
+        }
+
+        return true;
+    }
+
+    function refreshCaptcha() {
+        const img = document.getElementById('captchaImage');
+        if (img) {
+            fetch('/refresh-captcha')
+                .then(() => {
+                    img.src = '/captcha?' + new Date().getTime();
+                })
+                .catch(err => {
+                    img.src = '/captcha?' + new Date().getTime();
+                });
+        }
+    }
+
+    function setButtonLoading(button, loading) {
+        if (loading) {
+            button.disabled = true;
+            button.classList.add('submit-btn-loading');
+            button.dataset.originalText = button.innerHTML;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>提交中...';
+        } else {
+            button.disabled = false;
+            button.classList.remove('submit-btn-loading');
+            if (button.dataset.originalText) {
+                button.innerHTML = button.dataset.originalText;
+            }
+        }
+    }
+
+    async function submitVote() {
+        const submitBtn = document.getElementById('submitBtn');
+        const voteForm = document.getElementById('voteForm');
+
+        if (isSubmitting) {
+            showMessage('请求处理中，请稍候...', 'info');
+            return;
+        }
+
+        if (voteType === 'single') {
+            if (!validateSingleSelect()) return;
+        } else {
+            if (!validateMultiSelect()) return;
+        }
+
+        if (!validateCaptcha()) return;
+
+        isSubmitting = true;
+        setButtonLoading(submitBtn, true);
+        clearExistingMessage();
+
+        try {
+            let optionIds = [];
+            
+            if (voteType === 'single') {
+                const checked = document.querySelector('input[name="option_ids"]:checked');
+                if (checked) {
+                    optionIds = [parseInt(checked.value)];
+                }
+            } else {
+                const checked = document.querySelectorAll('input[name="option_ids"]:checked');
+                optionIds = Array.from(checked).map(input => parseInt(input.value));
+            }
+
+            const captchaInput = document.getElementById('captchaInput');
+            const captchaValue = captchaInput.value.trim().toUpperCase();
+
+            const response = await fetch('/api/vote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    poll_id: pollId,
+                    option_ids: optionIds,
+                    captcha: captchaValue
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                successModal.show();
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '已投票';
+                submitBtn.classList.remove('btn-primary');
+                submitBtn.classList.add('btn-success');
+            } else {
+                showMessage(data.message, 'danger');
+                
+                if (data.captcha_error) {
+                    refreshCaptcha();
+                    captchaInput.value = '';
+                    captchaInput.focus();
+                }
+            }
+
+        } catch (error) {
+            console.error('Vote error:', error);
+            showMessage('网络错误，请检查网络连接后重试', 'danger');
+        } finally {
+            if (!document.getElementById('successModal').classList.contains('show')) {
+                isSubmitting = false;
+                setButtonLoading(submitBtn, false);
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const voteForm = document.getElementById('voteForm');
+        const captchaInput = document.getElementById('captchaInput');
+        const refreshBtn = document.querySelector('.refresh-btn');
+
+        if (voteForm) {
+            if (voteType === 'multiple') {
+                const checkboxes = voteForm.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', function(e) {
+                        const checkedCount = voteForm.querySelectorAll('input[type="checkbox"]:checked').length;
+                        
+                        if (checkedCount > maxChoices) {
+                            e.preventDefault();
+                            this.checked = false;
+                            showMessage(`已达到最大选择数量 (${maxChoices} 个)`, 'warning');
+                        }
+                        
+                        updateSelectedCount();
+                    });
+                });
+
+                updateSelectedCount();
+            }
+
+            voteForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitVote();
+            });
+
+            if (captchaInput) {
+                captchaInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        submitVote();
+                    }
+                });
+
+                captchaInput.addEventListener('input', function() {
+                    const statusIcon = document.querySelector('.captcha-status-icon');
+                    if (statusIcon) {
+                        if (this.value.length === 4) {
+                            statusIcon.className = 'captcha-status-icon valid';
+                            statusIcon.textContent = '✓';
+                        } else if (this.value.length > 4) {
+                            statusIcon.className = 'captcha-status-icon invalid';
+                            statusIcon.textContent = '✗';
+                        } else {
+                            statusIcon.className = 'captcha-status-icon';
+                        }
+                    }
+                });
+            }
+
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    refreshCaptcha();
+                });
+            }
+
+            const firstOption = voteForm.querySelector('input[name="option_ids"]');
+            if (firstOption && voteType === 'single') {
+            }
+        }
+
+        const captchaWrapper = document.querySelector('.captcha-wrapper');
+        if (captchaWrapper && captchaInput) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'captcha-input-wrapper';
+            captchaInput.parentNode.insertBefore(wrapper, captchaInput);
+            wrapper.appendChild(captchaInput);
+
+            const statusIcon = document.createElement('span');
+            statusIcon.className = 'captcha-status-icon';
+            wrapper.appendChild(statusIcon);
+        }
+    });
+
+    window.refreshCaptcha = refreshCaptcha;
+    window.showMessage = showMessage;
+
+})();
+</script>
+{% endblock %}
