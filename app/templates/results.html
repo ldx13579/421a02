@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}{{ poll.title }} - 投票结果{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">首页</a></li>
+                <li class="breadcrumb-item active" aria-current="page">投票结果</li>
+            </ol>
+        </nav>
+
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">{{ poll.title }}</h4>
+                <span class="badge bg-light text-primary">
+                    总票数: {{ total_votes }}
+                </span>
+            </div>
+            <div class="card-body">
+                {% if poll.description %}
+                    <p class="text-muted mb-4">{{ poll.description }}</p>
+                {% endif %}
+
+                <div class="mb-4">
+                    <canvas id="resultsChart" style="max-height: 300px;"></canvas>
+                </div>
+
+                <h5 class="mb-3">详细数据</h5>
+                <div class="list-group">
+                    {% for result in results %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>{{ result.text }}</strong>
+                                <span class="text-muted">
+                                    {{ result.votes }} 票 ({{ result.percentage }}%)
+                                </span>
+                            </div>
+                            <div class="progress" style="height: 25px;">
+                                <div 
+                                    class="progress-bar progress-bar-striped progress-bar-animated"
+                                    role="progressbar"
+                                    style="width: {{ result.percentage }}%"
+                                    aria-valuenow="{{ result.percentage }}"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100"
+                                >
+                                    {{ result.percentage }}%
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-4 d-grid gap-2">
+                    <a href="{{ url_for('main.poll_detail', poll_id=poll.id) }}" class="btn btn-outline-primary">
+                        返回投票页面
+                    </a>
+                    <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+                        返回首页
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const results = {{ results|tojson }};
+    const totalVotes = {{ total_votes }};
+    
+    if (results.length > 0) {
+        const colors = [
+            '#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8',
+            '#6610f2', '#e83e8c', '#fd7e14', '#20c997', '#6c757d'
+        ];
+        
+        const labels = results.map(r => r.text);
+        const data = results.map(r => r.votes);
+        const bgColors = results.map((_, i) => colors[i % colors.length]);
+        
+        const ctx = document.getElementById('resultsChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '票数',
+                    data: data,
+                    backgroundColor: bgColors,
+                    borderColor: bgColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: `投票结果统计 (共 ${totalVotes} 票)`,
+                        font: {
+                            size: 16
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    let previousData = null;
+    
+    function checkForUpdates() {
+        fetch(`/api/results/{{ poll.id }}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const currentData = JSON.stringify(data.data);
+                    if (previousData && previousData !== currentData) {
+                        location.reload();
+                    }
+                    previousData = currentData;
+                }
+            })
+            .catch(err => console.error('检查更新失败:', err));
+    }
+    
+    setInterval(checkForUpdates, 30000);
+});
+</script>
+{% endblock %}
