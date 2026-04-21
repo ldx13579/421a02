@@ -2,64 +2,360 @@
 
 {% block title %}首页 - 在线投票系统{% endblock %}
 
+{% block extra_css %}
+<style>
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: pulse 4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-float {
+    animation: float 3s ease-in-out infinite;
+}
+
+.animate-slide-in {
+    animation: slideInUp 0.6s ease-out forwards;
+}
+
+.feature-card {
+    transition: all 0.3s ease;
+    border: none;
+    background: linear-gradient(145deg, #ffffff, #f8f9fa);
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(102, 126, 234, 0.2);
+}
+
+.feature-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state-card {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+    border: 2px dashed #c9d3dd;
+    position: relative;
+    overflow: hidden;
+}
+
+.empty-state-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    100% { left: 100%; }
+}
+
+.quick-action-btn {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.quick-action-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+}
+
+.quick-action-btn:hover::after {
+    width: 300px;
+    height: 300px;
+}
+
+.hero-badge {
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.poll-card {
+    transition: all 0.3s ease;
+    background: linear-gradient(145deg, #ffffff, #f8f9fa);
+}
+
+.poll-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.poll-card .card-header {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <div class="jumbotron bg-primary text-white rounded-3 p-5 mb-4">
-            <h1 class="display-4">欢迎使用在线投票系统</h1>
-            <p class="lead">公平、透明、便捷的在线投票平台，支持单选、多选多种投票模式。</p>
-            <hr class="my-4">
-            <p class="mb-0">采用验证码验证和IP限制机制，有效防止恶意刷票行为。</p>
+<div class="hero-section text-white rounded-4 p-5 mb-5 mt-3 position-relative">
+    <div class="position-relative z-index-1">
+        <div class="hero-badge badge rounded-pill px-3 py-2 mb-3 animate-slide-in">
+            <span class="me-1">✨</span>全新升级的投票体验
+        </div>
+        
+        <h1 class="display-4 fw-bold mb-3 animate-slide-in" style="animation-delay: 0.1s;">
+            智能在线投票系统
+        </h1>
+        
+        <p class="lead mb-4 opacity-90 animate-slide-in" style="animation-delay: 0.2s;">
+            支持单选、多选多种投票模式，采用验证码验证和IP限制机制，<br>
+            打造公平、透明、安全的在线投票平台。
+        </p>
+        
+        <div class="d-flex flex-wrap gap-3 animate-slide-in" style="animation-delay: 0.3s;">
+            <div class="d-flex align-items-center">
+                <span class="animate-float" style="animation-delay: 0s;">🗳️</span>
+                <span class="ms-2">即时投票</span>
+            </div>
+            <div class="d-flex align-items-center">
+                <span class="animate-float" style="animation-delay: 0.5s;">📊</span>
+                <span class="ms-2">实时统计</span>
+            </div>
+            <div class="d-flex align-items-center">
+                <span class="animate-float" style="animation-delay: 1s;">🔒</span>
+                <span class="ms-2">安全可靠</span>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-12">
-        <h2 class="mb-4">
-            <span class="me-2">📋</span>当前活跃投票
-        </h2>
-        
-        {% if polls %}
-            <div class="row g-4">
-                {% for poll in polls %}
-                    <div class="col-md-6 col-lg-4">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-body">
-                                <h5 class="card-title text-primary">{{ poll.title }}</h5>
-                                {% if poll.description %}
-                                    <p class="card-text text-muted small">{{ poll.description[:100] }}{% if poll.description|length > 100 %}...{% endif %}</p>
-                                {% endif %}
-                                <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <span class="badge {% if poll.vote_type == 'single' %}bg-success{% else %}bg-info{% endif %}">
-                                        {% if poll.vote_type == 'single' %}单选{% else %}多选({{ poll.max_choices }}选){% endif %}
-                                    </span>
-                                    <span class="text-muted small">
-                                        <i class="bi bi-person"></i> {{ poll.get_total_votes() }} 票
-                                    </span>
-                                </div>
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="feature-card card h-100 p-4 text-center">
+            <div class="feature-icon mx-auto" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                🎯
+            </div>
+            <h5 class="fw-bold mb-2">灵活投票模式</h5>
+            <p class="text-muted mb-0">支持单选和多选两种投票模式，可自定义最多选择数量，满足不同投票场景需求。</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="feature-card card h-100 p-4 text-center">
+            <div class="feature-icon mx-auto" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                🛡️
+            </div>
+            <h5 class="fw-bold mb-2">多重安全防护</h5>
+            <p class="text-muted mb-0">图形验证码验证 + IP地址限制 + Session绑定，三重防护有效防止恶意刷票行为。</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="feature-card card h-100 p-4 text-center">
+            <div class="feature-icon mx-auto" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                📈
+            </div>
+            <h5 class="fw-bold mb-2">实时数据统计</h5>
+            <p class="text-muted mb-0">投票结果实时更新，支持柱状图和进度条可视化展示，数据一目了然。</p>
+        </div>
+    </div>
+</div>
+
+<div class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <span class="me-2">📋</span>当前活跃投票
+            </h2>
+            <p class="text-muted mb-0">参与投票，表达您的选择</p>
+        </div>
+        <div class="text-end">
+            <span class="badge bg-primary rounded-pill px-3 py-2">
+                共 {{ polls|length }} 个投票进行中
+            </span>
+        </div>
+    </div>
+    
+    {% if polls %}
+        <div class="row g-4">
+            {% for poll in polls %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="poll-card card h-100 shadow-sm border-0 rounded-3 overflow-hidden">
+                        <div class="card-header text-white py-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge bg-white text-primary rounded-pill">
+                                    {% if poll.vote_type == 'single' %}单选{% else %}多选{% endif %}
+                                </span>
+                                <small class="opacity-90">
+                                    {{ poll.get_total_votes() }} 人已参与
+                                </small>
                             </div>
-                            <div class="card-footer bg-transparent">
-                                <div class="d-grid gap-2">
-                                    <a href="{{ url_for('main.poll_detail', poll_id=poll.id) }}" class="btn btn-primary">
-                                        立即投票
-                                    </a>
-                                    <a href="{{ url_for('main.results', poll_id=poll.id) }}" class="btn btn-outline-secondary btn-sm">
-                                        查看结果
-                                    </a>
-                                </div>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold text-primary mb-2">{{ poll.title }}</h5>
+                            {% if poll.description %}
+                                <p class="card-text text-muted small mb-3">
+                                    {{ poll.description[:80] }}{% if poll.description|length > 80 %}...{% endif %}
+                                </p>
+                            {% else %}
+                                <p class="card-text text-muted small mb-3">暂无描述</p>
+                            {% endif %}
+                            
+                            <div class="d-flex gap-2 mb-3">
+                                {% if poll.vote_type == 'multiple' %}
+                                    <span class="badge bg-info">最多选 {{ poll.max_choices }} 项</span>
+                                {% endif %}
+                                {% if poll.start_time %}
+                                    <span class="badge bg-secondary">
+                                        {{ poll.start_time.strftime('%m-%d %H:%M') }} 开始
+                                    </span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('main.poll_detail', poll_id=poll.id) }}" class="btn btn-primary quick-action-btn">
+                                    <span class="me-2">✓</span>立即投票
+                                </a>
+                                <a href="{{ url_for('main.results', poll_id=poll.id) }}" class="btn btn-outline-secondary">
+                                    <span class="me-2">📊</span>查看结果
+                                </a>
                             </div>
                         </div>
                     </div>
-                {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state-card card text-center p-5 rounded-4">
+            <div class="display-1 text-muted mb-4 animate-float">📭</div>
+            <h3 class="fw-bold mb-2">暂无活跃投票</h3>
+            <p class="text-muted mb-4 max-w-md mx-auto">
+                当前还没有正在进行的投票活动。<br>
+                如果您是管理员，请登录后台创建新投票。
+            </p>
+            
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+                <a href="{{ url_for('admin.login') }}" class="btn btn-primary btn-lg quick-action-btn px-4">
+                    <span class="me-2">🔐</span>管理员登录
+                </a>
+                <a href="javascript:void(0)" onclick="showContactInfo()" class="btn btn-outline-secondary btn-lg px-4">
+                    <span class="me-2">💬</span>联系管理员
+                </a>
             </div>
-        {% else %}
-            <div class="text-center py-5">
-                <div class="display-1 text-muted mb-3">📭</div>
-                <h3 class="text-muted">暂无活跃投票</h3>
-                <p class="text-muted">请稍后再来查看，或联系管理员创建新投票。</p>
+            
+            <div id="contactInfo" class="mt-4 p-3 bg-light rounded d-none">
+                <div class="text-start max-w-sm mx-auto">
+                    <p class="mb-2"><strong>📧 邮箱:</strong> admin@example.com</p>
+                    <p class="mb-0"><strong>💡 提示:</strong> 管理员登录后可以在后台创建新投票</p>
+                </div>
             </div>
-        {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<div class="card bg-light border-0 rounded-4 p-4 mb-5">
+    <div class="row align-items-center">
+        <div class="col-md-8 mb-4 mb-md-0">
+            <h4 class="fw-bold mb-2">
+                <span class="me-2">🎯</span>如何开始投票？
+            </h4>
+            <p class="text-muted mb-0">
+                查看当前活跃投票，选择您支持的选项，输入验证码后即可完成投票。<br>
+                每个IP地址在24小时内只能投票一次，确保投票公平公正。
+            </p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <div class="d-flex flex-column gap-2">
+                {% if polls %}
+                    <a href="{{ url_for('main.poll_detail', poll_id=polls[0].id) }}" class="btn btn-primary quick-action-btn">
+                        <span class="me-2">🚀</span>立即参与投票
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('admin.login') }}" class="btn btn-outline-primary quick-action-btn">
+                        <span class="me-2">🔧</span>管理后台
+                    </a>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showContactInfo() {
+    const contactInfo = document.getElementById('contactInfo');
+    if (contactInfo) {
+        contactInfo.classList.toggle('d-none');
+        if (!contactInfo.classList.contains('d-none')) {
+            contactInfo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('animate-slide-in');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, observerOptions);
+
+    document.querySelectorAll('.feature-card, .poll-card, .empty-state-card').forEach(function(el) {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+        el.style.transition = 'all 0.6s ease-out';
+        observer.observe(el);
+    });
+});
+</script>
 {% endblock %}

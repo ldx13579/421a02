@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}404 - 页面未找到{% endblock %}
+
+{% block extra_css %}
+<style>
+.error-page {
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.error-card {
+    text-align: center;
+    padding: 60px 40px;
+}
+
+.error-code {
+    font-size: 8rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    margin-bottom: 20px;
+}
+
+.error-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.error-description {
+    font-size: 1.1rem;
+    color: #6c757d;
+    margin-bottom: 40px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.error-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-error-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 12px 30px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-error-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.error-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-20px);
+    }
+    60% {
+        transform: translateY(-10px);
+    }
+}
+
+.error-search {
+    max-width: 400px;
+    margin: 30px auto 0;
+}
+
+.error-search .input-group {
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.error-search .form-control {
+    border: none;
+    padding: 15px 20px;
+    height: auto;
+}
+
+.error-search .btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 15px 25px;
+}
+
+.quick-links {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 1px solid #e9ecef;
+}
+
+.quick-links-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.quick-links-list {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.quick-link-item {
+    padding: 10px 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    color: #667eea;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.quick-link-item:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-2px);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="error-card">
+        <div class="error-icon">
+            🔍
+        </div>
+        <div class="error-code">404</div>
+        <h2 class="error-title">页面未找到</h2>
+        <p class="error-description">
+            抱歉，您访问的页面不存在或已被移除。<br>
+            请检查网址是否正确，或返回首页继续浏览。
+        </p>
+        
+        <div class="error-actions">
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary btn-error-primary text-white">
+                <span class="me-2">🏠</span>返回首页
+            </a>
+            <button onclick="history.back()" class="btn btn-outline-secondary">
+                <span class="me-2">←</span>返回上一页
+            </button>
+        </div>
+        
+        <div class="quick-links">
+            <p class="quick-links-title">快速访问</p>
+            <div class="quick-links-list">
+                <a href="{{ url_for('main.index') }}" class="quick-link-item">首页</a>
+                <a href="{{ url_for('admin.login') }}" class="quick-link-item">管理后台</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
