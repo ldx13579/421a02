@@ -18,3 +18,6 @@ class Config:
     CAPTCHA_LENGTH = 4
     CAPTCHA_WIDTH = 120
     CAPTCHA_HEIGHT = 40
+    
+    RATE_LIMIT_VOTE_PER_MINUTE = int(os.environ.get('RATE_LIMIT_VOTE_PER_MINUTE') or 5)
+    RATE_LIMIT_GENERAL_PER_MINUTE = int(os.environ.get('RATE_LIMIT_GENERAL_PER_MINUTE') or 30)

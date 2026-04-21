@@ -1,165 +1,228 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, current_app
 from app import db
 from app.models import Poll, Option, VoteRecord
-from app.utils import (
-    can_vote,
-    record_vote,
+from app.utils.security import (
     get_client_ip,
-    get_session_id
+    get_session_id,
+    check_rate_limit,
+    validate_captcha,
+    check_vote_permission_atomic,
+    validate_options_for_poll,
+    validate_poll_vote_type,
+    record_vote_atomic,
+    get_poll_results
 )
 from datetime import datetime
+from sqlalchemy.exc import SQLAlchemyError
 
 api = Blueprint('api', __name__)
 
 @api.route('/vote', methods=['POST'])
 def submit_vote():
-    data = request.get_json()
-    
-    if not data:
-        return jsonify({
-            'success': False,
-            'message': '无效的请求数据'
-        }), 400
-    
-    poll_id = data.get('poll_id')
-    option_ids = data.get('option_ids', [])
-    captcha_input = data.get('captcha', '').strip().upper()
-    
-    if not poll_id:
-        return jsonify({
-            'success': False,
-            'message': '缺少投票ID'
-        }), 400
-    
-    if not option_ids:
-        return jsonify({
-            'success': False,
-            'message': '请选择投票选项'
-        }), 400
-    
-    captcha_session = session.get('captcha', '').upper()
-    if not captcha_input or captcha_input != captcha_session:
-        return jsonify({
-            'success': False,
-            'message': '验证码错误，请重试',
-            'captcha_error': True
-        }), 400
-    
-    poll = Poll.query.get(poll_id)
-    if not poll:
-        return jsonify({
-            'success': False,
-            'message': '投票不存在'
-        }), 404
-    
-    can_vote_flag, vote_message = can_vote(poll)
-    if not can_vote_flag:
-        return jsonify({
-            'success': False,
-            'message': vote_message
-        }), 403
-    
-    valid_options = poll.options.with_entities(Option.id).all()
-    valid_option_ids = [opt[0] for opt in valid_options]
-    
-    if not all(opt_id in valid_option_ids for opt_id in option_ids):
-        return jsonify({
-            'success': False,
-            'message': '存在无效的投票选项'
-        }), 400
-    
-    if poll.vote_type == 'single' and len(option_ids) > 1:
-        return jsonify({
-            'success': False,
-            'message': '该投票仅支持单选'
-        }), 400
-    
-    if poll.vote_type == 'multiple' and len(option_ids) > poll.max_choices:
-        return jsonify({
-            'success': False,
-            'message': f'最多只能选择{poll.max_choices}个选项'
-        }), 400
-    
     try:
+        rate_ok, rate_msg = check_rate_limit()
+        if not rate_ok:
+            return jsonify({
+                'success': False,
+                'message': rate_msg,
+                'error_type': 'rate_limit'
+            }), 429
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'message': '无效的请求格式',
+                'error_type': 'invalid_request'
+            }), 400
+        
+        poll_id = data.get('poll_id')
+        option_ids = data.get('option_ids', [])
+        captcha_input = data.get('captcha', '')
+        
+        if not poll_id:
+            return jsonify({
+                'success': False,
+                'message': '缺少投票ID',
+                'error_type': 'missing_param'
+            }), 400
+        
+        try:
+            poll_id = int(poll_id)
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': False,
+                'message': '无效的投票ID格式',
+                'error_type': 'invalid_param'
+            }), 400
+        
+        captcha_ok, captcha_msg = validate_captcha(captcha_input)
+        if not captcha_ok:
+            return jsonify({
+                'success': False,
+                'message': captcha_msg,
+                'error_type': 'captcha_error',
+                'captcha_error': True
+            }), 400
+        
+        poll = Poll.query.get(poll_id)
+        if not poll:
+            return jsonify({
+                'success': False,
+                'message': '投票不存在',
+                'error_type': 'poll_not_found'
+            }), 404
+        
+        if not poll.is_voting_open():
+            return jsonify({
+                'success': False,
+                'message': '投票尚未开始或已结束',
+                'error_type': 'poll_closed'
+            }), 403
+        
+        options_ok, valid_option_ids, options_msg = validate_options_for_poll(poll_id, option_ids)
+        if not options_ok:
+            return jsonify({
+                'success': False,
+                'message': options_msg,
+                'error_type': 'invalid_options'
+            }), 400
+        
+        vote_type_ok, vote_type_msg = validate_poll_vote_type(poll, valid_option_ids)
+        if not vote_type_ok:
+            return jsonify({
+                'success': False,
+                'message': vote_type_msg,
+                'error_type': 'vote_type_violation'
+            }), 400
+        
         ip_address = get_client_ip()
         user_agent = request.user_agent.string if request.user_agent else ''
         session_id = get_session_id()
         
-        record_vote(poll_id, option_ids, ip_address, user_agent, session_id)
+        try:
+            with db.session.begin_nested():
+                can_vote_atomic = check_vote_permission_atomic(poll_id, ip_address, session_id)
+                if not can_vote_atomic:
+                    db.session.rollback()
+                    limit_hours = current_app.config.get('VOTE_IP_LIMIT_HOURS', 24)
+                    return jsonify({
+                        'success': False,
+                        'message': f'您已经投过票了，{limit_hours}小时内不能重复投票',
+                        'error_type': 'already_voted'
+                    }), 403
+                
+                vote_ok, vote_msg = record_vote_atomic(
+                    poll_id, 
+                    valid_option_ids, 
+                    ip_address, 
+                    user_agent, 
+                    session_id
+                )
+                
+                if not vote_ok:
+                    db.session.rollback()
+                    return jsonify({
+                        'success': False,
+                        'message': vote_msg,
+                        'error_type': 'vote_failed'
+                    }), 500
+            
+            db.session.commit()
+            
+            results = get_poll_results(poll_id)
+            
+            return jsonify({
+                'success': True,
+                'message': '投票成功！',
+                'results': results
+            })
+            
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'message': '数据库操作失败，请稍后重试',
+                'error_type': 'database_error'
+            }), 500
         
-        session['captcha'] = ''
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'message': f'投票失败：{str(e)}',
+                'error_type': 'unknown_error'
+            }), 500
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': '服务器内部错误',
+            'error_type': 'server_error'
+        }), 500
+
+@api.route('/results/<int:poll_id>', methods=['GET'])
+def get_results(poll_id):
+    try:
+        rate_ok, rate_msg = check_rate_limit()
+        if not rate_ok:
+            return jsonify({
+                'success': False,
+                'message': rate_msg
+            }), 429
+        
+        poll = Poll.query.get(poll_id)
+        if not poll:
+            return jsonify({
+                'success': False,
+                'message': '投票不存在'
+            }), 404
         
         results = get_poll_results(poll_id)
         
         return jsonify({
             'success': True,
-            'message': '投票成功！',
-            'results': results
+            'data': results
         })
-    
+        
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'投票失败：{str(e)}'
+            'message': '获取结果失败'
         }), 500
-
-@api.route('/results/<int:poll_id>', methods=['GET'])
-def get_results(poll_id):
-    poll = Poll.query.get(poll_id)
-    if not poll:
-        return jsonify({
-            'success': False,
-            'message': '投票不存在'
-        }), 404
-    
-    results = get_poll_results(poll_id)
-    
-    return jsonify({
-        'success': True,
-        'data': results
-    })
-
-def get_poll_results(poll_id):
-    poll = Poll.query.get(poll_id)
-    options = poll.options.order_by(Option.order, Option.id).all()
-    
-    total_votes = poll.get_total_votes()
-    
-    results = {
-        'poll_id': poll_id,
-        'total_votes': total_votes,
-        'options': []
-    }
-    
-    for option in options:
-        vote_count = option.get_vote_count()
-        percentage = option.get_vote_percentage()
-        results['options'].append({
-            'id': option.id,
-            'text': option.text,
-            'votes': vote_count,
-            'percentage': percentage
-        })
-    
-    return results
 
 @api.route('/polls/active', methods=['GET'])
 def get_active_polls():
-    active_polls = Poll.query.filter_by(is_active=True).order_by(Poll.created_at.desc()).all()
-    
-    polls_data = []
-    for poll in active_polls:
-        polls_data.append({
-            'id': poll.id,
-            'title': poll.title,
-            'description': poll.description,
-            'vote_type': poll.vote_type,
-            'max_choices': poll.max_choices,
-            'total_votes': poll.get_total_votes()
+    try:
+        active_polls = Poll.query.filter_by(is_active=True).order_by(Poll.created_at.desc()).all()
+        
+        polls_data = []
+        for poll in active_polls:
+            polls_data.append({
+                'id': poll.id,
+                'title': poll.title,
+                'description': poll.description,
+                'vote_type': poll.vote_type,
+                'max_choices': poll.max_choices,
+                'total_votes': poll.get_total_votes()
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': polls_data
         })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': '获取投票列表失败'
+        }), 500
+
+@api.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     
-    return jsonify({
-        'success': True,
-        'data': polls_data
-    })
+    return response
