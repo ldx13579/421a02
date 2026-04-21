@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 在线投票系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white rounded-3 p-5 mb-4">
+            <h1 class="display-4">欢迎使用在线投票系统</h1>
+            <p class="lead">公平、透明、便捷的在线投票平台，支持单选、多选多种投票模式。</p>
+            <hr class="my-4">
+            <p class="mb-0">采用验证码验证和IP限制机制，有效防止恶意刷票行为。</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <span class="me-2">📋</span>当前活跃投票
+        </h2>
+        
+        {% if polls %}
+            <div class="row g-4">
+                {% for poll in polls %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title text-primary">{{ poll.title }}</h5>
+                                {% if poll.description %}
+                                    <p class="card-text text-muted small">{{ poll.description[:100] }}{% if poll.description|length > 100 %}...{% endif %}</p>
+                                {% endif %}
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <span class="badge {% if poll.vote_type == 'single' %}bg-success{% else %}bg-info{% endif %}">
+                                        {% if poll.vote_type == 'single' %}单选{% else %}多选({{ poll.max_choices }}选){% endif %}
+                                    </span>
+                                    <span class="text-muted small">
+                                        <i class="bi bi-person"></i> {{ poll.get_total_votes() }} 票
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <div class="d-grid gap-2">
+                                    <a href="{{ url_for('main.poll_detail', poll_id=poll.id) }}" class="btn btn-primary">
+                                        立即投票
+                                    </a>
+                                    <a href="{{ url_for('main.results', poll_id=poll.id) }}" class="btn btn-outline-secondary btn-sm">
+                                        查看结果
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="display-1 text-muted mb-3">📭</div>
+                <h3 class="text-muted">暂无活跃投票</h3>
+                <p class="text-muted">请稍后再来查看，或联系管理员创建新投票。</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

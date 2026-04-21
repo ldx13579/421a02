@@ -1,0 +1,187 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ poll.title }} - 投票结果{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">仪表盘</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.polls') }}">投票管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">投票结果</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">{{ poll.title }}</h4>
+                <div>
+                    <span class="badge bg-light text-primary me-2">
+                        总票数: {{ total_votes }}
+                    </span>
+                    <span class="badge {% if poll.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                        {% if poll.is_active %}投票中{% else %}已结束{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if poll.description %}
+                    <p class="text-muted mb-4">{{ poll.description }}</p>
+                {% endif %}
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <p class="text-muted mb-1">投票类型</p>
+                                <h5 class="mb-0">
+                                    {% if poll.vote_type == 'single' %}单选{% else %}多选(最多{{ poll.max_choices }}项){% endif %}
+                                </h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <p class="text-muted mb-1">参与人数</p>
+                                <h5 class="mb-0">{{ total_votes }} 人次</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <canvas id="resultsChart" style="max-height: 400px;"></canvas>
+                </div>
+
+                <h5 class="mb-3">详细统计</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>选项</th>
+                                <th>票数</th>
+                                <th>占比</th>
+                                <th>进度</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in results %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td><strong>{{ result.text }}</strong></td>
+                                <td>
+                                    <span class="badge bg-primary">{{ result.votes }}</span>
+                                </td>
+                                <td>{{ result.percentage }}%</td>
+                                <td style="width: 40%;">
+                                    <div class="progress" style="height: 20px;">
+                                        <div 
+                                            class="progress-bar progress-bar-striped"
+                                            style="width: {{ result.percentage }}%"
+                                        >
+                                            {{ result.percentage }}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4 d-flex justify-content-between">
+                    <a href="{{ url_for('admin.polls') }}" class="btn btn-secondary">
+                        ← 返回列表
+                    </a>
+                    <div class="btn-group">
+                        <a href="{{ url_for('admin.edit_poll', poll_id=poll.id) }}" class="btn btn-outline-primary">
+                            编辑投票
+                        </a>
+                        <a href="{{ url_for('main.results', poll_id=poll.id) }}" target="_blank" class="btn btn-outline-info">
+                            前台查看
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const results = {{ results|tojson }};
+    const totalVotes = {{ total_votes }};
+    
+    if (results.length > 0) {
+        const colors = [
+            '#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8',
+            '#6610f2', '#e83e8c', '#fd7e14', '#20c997', '#6c757d'
+        ];
+        
+        const labels = results.map(r => r.text);
+        const data = results.map(r => r.votes);
+        const bgColors = results.map((_, i) => colors[i % colors.length]);
+        
+        const ctx = document.getElementById('resultsChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '票数',
+                    data: data,
+                    backgroundColor: bgColors,
+                    borderColor: bgColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: `投票结果统计`,
+                        font: {
+                            size: 18
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw;
+                                const percentage = totalVotes > 0 
+                                    ? ((value / totalVotes) * 100).toFixed(1) 
+                                    : 0;
+                                return `票数: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
