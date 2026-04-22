@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}403 - 访问被拒绝{% endblock %}
+
+{% block extra_css %}
+<style>
+.error-page {
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.error-card {
+    text-align: center;
+    padding: 60px 40px;
+}
+
+.error-code {
+    font-size: 8rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    margin-bottom: 20px;
+}
+
+.error-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.error-description {
+    font-size: 1.1rem;
+    color: #6c757d;
+    margin-bottom: 40px;
+    max-width: 450px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.error-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-error-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 12px 30px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-error-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.error-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+.lock-animation {
+    position: relative;
+    display: inline-block;
+}
+
+.lock-animation::after {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 60px;
+    border: 3px solid rgba(255, 193, 7, 0.3);
+    border-radius: 50%;
+    animation: ring 2s infinite;
+}
+
+@keyframes ring {
+    0% {
+        transform: translateX(-50%) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(-50%) scale(1.5);
+        opacity: 0;
+    }
+}
+
+.quick-links {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 1px solid #e9ecef;
+}
+
+.quick-links-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.quick-links-list {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.quick-link-item {
+    padding: 10px 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    color: #667eea;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.quick-link-item:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.suggestion-box {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 30px;
+    max-width: 450px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+}
+
+.suggestion-title {
+    font-weight: 600;
+    color: #856404;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.suggestion-title span {
+    margin-right: 8px;
+}
+
+.suggestion-list {
+    margin: 0;
+    padding-left: 20px;
+    color: #856404;
+}
+
+.suggestion-list li {
+    margin-bottom: 5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="error-card">
+        <div class="error-icon lock-animation">
+            🔒
+        </div>
+        <div class="error-code">403</div>
+        <h2 class="error-title">访问被拒绝</h2>
+        <p class="error-description">
+            抱歉，您没有权限访问此页面。<br>
+            此页面需要管理员权限才能访问。
+        </p>
+        
+        <div class="suggestion-box">
+            <p class="suggestion-title">
+                <span>💡</span>您可以尝试：
+            </p>
+            <ul class="suggestion-list">
+                <li>如果您是管理员，请先登录管理后台</li>
+                <li>检查您的账户是否具有足够权限</li>
+                <li>联系系统管理员获取帮助</li>
+            </ul>
+        </div>
+        
+        <div class="error-actions mt-4">
+            <a href="{{ url_for('admin.login') }}" class="btn btn-primary btn-error-primary text-white">
+                <span class="me-2">🔐</span>管理员登录
+            </a>
+            <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+                <span class="me-2">🏠</span>返回首页
+            </a>
+        </div>
+        
+        <div class="quick-links">
+            <p class="quick-links-title">快速访问</p>
+            <div class="quick-links-list">
+                <a href="{{ url_for('main.index') }}" class="quick-link-item">投票首页</a>
+                <a href="{{ url_for('admin.login') }}" class="quick-link-item">管理员登录</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

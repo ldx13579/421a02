@@ -1,0 +1,137 @@
+{% extends "admin/base.html" %}
+
+{% block title %}仪表盘 - 管理后台{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-0">仪表盘</h2>
+        <p class="text-muted">欢迎使用投票管理后台</p>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">总投票数</h5>
+                        <p class="display-4 mb-0">{{ total_polls }}</p>
+                    </div>
+                    <div class="display-1 opacity-50">📊</div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <a href="{{ url_for('admin.polls') }}" class="text-white text-decoration-none">
+                    查看全部 →
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-success h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">活跃投票</h5>
+                        <p class="display-4 mb-0">{{ active_polls }}</p>
+                    </div>
+                    <div class="display-1 opacity-50">🟢</div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <a href="{{ url_for('admin.polls') }}" class="text-white text-decoration-none">
+                    管理投票 →
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-info h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">总投票人次</h5>
+                        <p class="display-4 mb-0">{{ total_votes }}</p>
+                    </div>
+                    <div class="display-1 opacity-50">👥</div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <span class="text-white opacity-75">累计投票记录</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">最近创建的投票</h5>
+                <a href="{{ url_for('admin.polls') }}" class="btn btn-sm btn-outline-primary">
+                    查看全部
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recent_polls %}
+                    <div class="list-group list-group-flush">
+                        {% for poll in recent_polls %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">
+                                        {{ poll.title }}
+                                        <span class="badge {% if poll.is_active %}bg-success{% else %}bg-secondary{% endif %} ms-2">
+                                            {% if poll.is_active %}活跃{% else %}已禁用{% endif %}
+                                        </span>
+                                    </h6>
+                                    <small class="text-muted">
+                                        类型: {% if poll.vote_type == 'single' %}单选{% else %}多选{% endif %} | 
+                                        创建: {{ poll.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                    </small>
+                                </div>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('admin.edit_poll', poll_id=poll.id) }}" class="btn btn-sm btn-outline-primary">
+                                        编辑
+                                    </a>
+                                    <a href="{{ url_for('admin.poll_results', poll_id=poll.id) }}" class="btn btn-sm btn-outline-info">
+                                        结果
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted mb-0">暂无投票数据</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">快捷操作</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('admin.create_poll') }}" class="btn btn-primary">
+                        ➕ 创建新投票
+                    </a>
+                    <a href="{{ url_for('admin.polls') }}" class="btn btn-outline-primary">
+                        📋 管理投票
+                    </a>
+                    <a href="{{ url_for('admin.settings') }}" class="btn btn-outline-secondary">
+                        ⚙️ 系统设置
+                    </a>
+                    <a href="{{ url_for('main.index') }}" target="_blank" class="btn btn-outline-info">
+                        🌐 查看前台
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

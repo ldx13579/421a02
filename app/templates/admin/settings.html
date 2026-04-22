@@ -1,0 +1,99 @@
+{% extends "admin/base.html" %}
+
+{% block title %}系统设置 - 管理后台{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">仪表盘</a></li>
+                <li class="breadcrumb-item active" aria-current="page">系统设置</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">⚙️ 管理员账户设置</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">用户名</label>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="username" 
+                            name="username"
+                            value="{{ admin.username }}"
+                            placeholder="请输入新用户名"
+                        >
+                        <div class="form-text">
+                            修改用户名后需要重新登录。
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h6 class="mb-3">修改密码（留空则不修改）</h6>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">新密码</label>
+                        <input 
+                            type="password" 
+                            class="form-control" 
+                            id="password" 
+                            name="password"
+                            placeholder="请输入新密码（至少6位）"
+                        >
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">确认密码</label>
+                        <input 
+                            type="password" 
+                            class="form-control" 
+                            id="confirm_password" 
+                            name="confirm_password"
+                            placeholder="请再次输入新密码"
+                        >
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+                            ← 返回仪表盘
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            💾 保存设置
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">ℹ️ 系统信息</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>系统名称:</strong> 在线投票管理系统</p>
+                        <p class="mb-1"><strong>当前管理员:</strong> {{ admin.username }}</p>
+                        <p class="mb-0"><strong>最后登录:</strong> {{ admin.last_login.strftime('%Y-%m-%d %H:%M') if admin.last_login else '从未登录' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>IP限制时长:</strong> 24小时</p>
+                        <p class="mb-1"><strong>验证码长度:</strong> 4位</p>
+                        <p class="mb-0"><strong>框架:</strong> Flask 3.0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
