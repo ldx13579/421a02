@@ -168,32 +168,19 @@ def check_vote_permission_with_lock(poll_id, ip_address, session_id):
         
         existing = VoteSession.query.filter(
             VoteSession.poll_id == poll_id,
-            db.or_(
-                VoteSession.ip_address == ip_address,
-                VoteSession.session_id == session_id
-            )
-        ).first()
+            VoteSession.ip_address == ip_address,
+            VoteSession.session_id == session_id
+        ).with_for_update().first()
         
         if existing:
             if existing.voted_at >= cutoff_time:
                 return False, f'您已经投过票了，{limit_hours}小时内不能重复投票'
             else:
-                try:
-                    db.session.delete(existing)
-                    new_session = VoteSession(
-                        poll_id=poll_id,
-                        ip_address=ip_address,
-                        session_id=session_id,
-                        voted_at=datetime.utcnow()
-                    )
-                    db.session.add(new_session)
-                    db.session.flush()
-                    return True, None
-                except IntegrityError:
-                    db.session.rollback()
-                    return False, f'您已经投过票了，{limit_hours}小时内不能重复投票'
-        
-        return False, '投票验证失败，请稍后重试'
+                existing.voted_at = datetime.utcnow()
+                db.session.flush()
+                return True, None
+        else:
+            return False, '投票验证失败，请稍后重试'
 
 def validate_options_for_poll(poll_id, option_ids):
     if not option_ids:
