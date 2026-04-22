@@ -1,19 +1,20 @@
 from flask import Blueprint, request, jsonify, session, current_app
 from app import db
-from app.models import Poll, Option, VoteRecord
+from app.models import Poll, Option, VoteRecord, VoteSession
 from app.utils.security import (
     get_client_ip,
     get_session_id,
     check_rate_limit,
     validate_captcha,
-    check_vote_permission_atomic,
+    check_vote_permission_with_lock,
     validate_options_for_poll,
     validate_poll_vote_type,
-    record_vote_atomic,
-    get_poll_results
+    record_vote_records,
+    get_poll_results,
+    can_view_results
 )
 from datetime import datetime
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 api = Blueprint('api', __name__)
 
@@ -56,13 +57,14 @@ def submit_vote():
                 'error_type': 'invalid_param'
             }), 400
         
-        captcha_ok, captcha_msg = validate_captcha(captcha_input)
+        captcha_ok, captcha_msg, remaining_attempts = validate_captcha(captcha_input)
         if not captcha_ok:
             return jsonify({
                 'success': False,
                 'message': captcha_msg,
                 'error_type': 'captcha_error',
-                'captcha_error': True
+                'captcha_error': True,
+                'remaining_attempts': remaining_attempts
             }), 400
         
         poll = Poll.query.get(poll_id)
@@ -101,34 +103,38 @@ def submit_vote():
         session_id = get_session_id()
         
         try:
-            with db.session.begin_nested():
-                can_vote_atomic = check_vote_permission_atomic(poll_id, ip_address, session_id)
-                if not can_vote_atomic:
-                    db.session.rollback()
-                    limit_hours = current_app.config.get('VOTE_IP_LIMIT_HOURS', 24)
-                    return jsonify({
-                        'success': False,
-                        'message': f'您已经投过票了，{limit_hours}小时内不能重复投票',
-                        'error_type': 'already_voted'
-                    }), 403
-                
-                vote_ok, vote_msg = record_vote_atomic(
-                    poll_id, 
-                    valid_option_ids, 
-                    ip_address, 
-                    user_agent, 
-                    session_id
-                )
-                
-                if not vote_ok:
-                    db.session.rollback()
-                    return jsonify({
-                        'success': False,
-                        'message': vote_msg,
-                        'error_type': 'vote_failed'
-                    }), 500
+            can_vote_flag, vote_msg = check_vote_permission_with_lock(poll_id, ip_address, session_id)
             
-            db.session.commit()
+            if not can_vote_flag:
+                db.session.rollback()
+                return jsonify({
+                    'success': False,
+                    'message': vote_msg,
+                    'error_type': 'already_voted'
+                }), 403
+            
+            vote_ok, vote_msg = record_vote_records(
+                poll_id, 
+                valid_option_ids, 
+                ip_address, 
+                user_agent, 
+                session_id
+            )
+            
+            if not vote_ok:
+                db.session.rollback()
+                VoteSession.query.filter_by(
+                    poll_id=poll_id,
+                    ip_address=ip_address,
+                    session_id=session_id
+                ).delete()
+                db.session.commit()
+                
+                return jsonify({
+                    'success': False,
+                    'message': vote_msg,
+                    'error_type': 'vote_failed'
+                }), 500
             
             results = get_poll_results(poll_id)
             
@@ -137,6 +143,15 @@ def submit_vote():
                 'message': '投票成功！',
                 'results': results
             })
+            
+        except IntegrityError as e:
+            db.session.rollback()
+            limit_hours = current_app.config.get('VOTE_IP_LIMIT_HOURS', 24)
+            return jsonify({
+                'success': False,
+                'message': f'您已经投过票了，{limit_hours}小时内不能重复投票',
+                'error_type': 'already_voted'
+            }), 403
             
         except SQLAlchemyError as e:
             db.session.rollback()
@@ -178,6 +193,12 @@ def get_results(poll_id):
                 'message': '投票不存在'
             }), 404
         
+        if not can_view_results(poll):
+            return jsonify({
+                'success': False,
+                'message': '该投票结果未公开，请联系管理员'
+            }), 403
+        
         results = get_poll_results(poll_id)
         
         return jsonify({
@@ -204,7 +225,8 @@ def get_active_polls():
                 'description': poll.description,
                 'vote_type': poll.vote_type,
                 'max_choices': poll.max_choices,
-                'total_votes': poll.get_total_votes()
+                'total_votes': poll.get_total_votes(),
+                'is_results_public': poll.is_results_public
             })
         
         return jsonify({

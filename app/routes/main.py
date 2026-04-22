@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify, make_response
+from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify, make_response, abort
 from app import db
 from app.models import Poll, Option
 from app.utils import (
@@ -9,6 +9,7 @@ from app.utils import (
     get_client_ip,
     get_session_id
 )
+from app.utils.security import store_captcha, can_view_results
 
 main = Blueprint('main', __name__)
 
@@ -25,7 +26,7 @@ def poll_detail(poll_id):
     can_vote_flag, vote_message = can_vote(poll)
     
     captcha_text = generate_captcha()
-    session['captcha'] = captcha_text
+    store_captcha(captcha_text)
     
     return render_template(
         'poll_detail.html',
@@ -38,6 +39,10 @@ def poll_detail(poll_id):
 @main.route('/results/<int:poll_id>')
 def results(poll_id):
     poll = Poll.query.get_or_404(poll_id)
+    
+    if not can_view_results(poll):
+        abort(403, description='该投票结果未公开，请联系管理员')
+    
     options = poll.options.order_by(Option.order, Option.id).all()
     
     results_data = []
@@ -63,7 +68,7 @@ def results(poll_id):
 @main.route('/captcha')
 def captcha():
     captcha_text = generate_captcha()
-    session['captcha'] = captcha_text
+    store_captcha(captcha_text)
     
     image_buffer = create_captcha_image(captcha_text)
     
@@ -78,5 +83,14 @@ def captcha():
 @main.route('/refresh-captcha')
 def refresh_captcha():
     captcha_text = generate_captcha()
-    session['captcha'] = captcha_text
-    return jsonify({'success': True})
+    store_captcha(captcha_text)
+    
+    image_buffer = create_captcha_image(captcha_text)
+    
+    response = make_response(image_buffer.getvalue())
+    response.headers['Content-Type'] = 'image/png'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    return response

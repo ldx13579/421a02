@@ -394,13 +394,7 @@
     function refreshCaptcha() {
         const img = document.getElementById('captchaImage');
         if (img) {
-            fetch('/refresh-captcha')
-                .then(() => {
-                    img.src = '/captcha?' + new Date().getTime();
-                })
-                .catch(err => {
-                    img.src = '/captcha?' + new Date().getTime();
-                });
+            img.src = '/refresh-captcha?' + new Date().getTime();
         }
     }
 
@@ -478,12 +472,18 @@
                 submitBtn.classList.remove('btn-primary');
                 submitBtn.classList.add('btn-success');
             } else {
-                showMessage(data.message, 'danger');
+                let errorMessage = data.message;
+                if (data.remaining_attempts !== undefined && data.remaining_attempts > 0) {
+                    errorMessage += ` (还剩 ${data.remaining_attempts} 次机会)`;
+                }
+                showMessage(errorMessage, 'danger');
                 
                 if (data.captcha_error) {
-                    refreshCaptcha();
                     captchaInput.value = '';
                     captchaInput.focus();
+                    if (data.remaining_attempts === 0) {
+                        refreshCaptcha();
+                    }
                 }
             }
 

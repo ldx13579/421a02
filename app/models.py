@@ -28,6 +28,7 @@ class Poll(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=False)
+    is_results_public = db.Column(db.Boolean, default=True)
     vote_type = db.Column(db.String(20), default='single')
     max_choices = db.Column(db.Integer, default=1)
     start_time = db.Column(db.DateTime, default=datetime.utcnow)
@@ -92,3 +93,33 @@ class VoteRecord(db.Model):
     
     def __repr__(self):
         return f'<VoteRecord poll={self.poll_id} option={self.option_id}>'
+
+class VoteSession(db.Model):
+    __tablename__ = 'vote_sessions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    poll_id = db.Column(db.Integer, db.ForeignKey('polls.id'), nullable=False, index=True)
+    ip_address = db.Column(db.String(45), nullable=False)
+    session_id = db.Column(db.String(100), nullable=False)
+    voted_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    __table_args__ = (
+        db.UniqueConstraint('poll_id', 'ip_address', 'session_id', name='uq_vote_session'),
+        db.Index('idx_vote_session_poll_ip', 'poll_id', 'ip_address'),
+    )
+    
+    def __repr__(self):
+        return f'<VoteSession poll={self.poll_id}>'
+
+class RateLimit(db.Model):
+    __tablename__ = 'rate_limits'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), nullable=False, unique=True, index=True)
+    count = db.Column(db.Integer, default=0)
+    reset_at = db.Column(db.DateTime, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<RateLimit key={self.key} count={self.count}>'

@@ -99,13 +99,21 @@ def init_database(app, db):
 
 def create_flask_app():
     from app import create_app, db
-    from app.models import Admin, Poll, Option, VoteRecord
+    from app.models import Admin, Poll, Option, VoteRecord, VoteSession, RateLimit
     
     app = create_app()
     
     @app.shell_context_processor
     def make_shell_context():
-        return {'db': db, 'Admin': Admin, 'Poll': Poll, 'Option': Option, 'VoteRecord': VoteRecord}
+        return {
+            'db': db, 
+            'Admin': Admin, 
+            'Poll': Poll, 
+            'Option': Option, 
+            'VoteRecord': VoteRecord,
+            'VoteSession': VoteSession,
+            'RateLimit': RateLimit
+        }
     
     return app, db
 
