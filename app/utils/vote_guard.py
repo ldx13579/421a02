@@ -37,7 +37,10 @@ def get_user_agent():
 
 def get_session_id():
     from flask import session
-    return session.get('_id', '')
+    import uuid
+    if '_vote_session_id' not in session:
+        session['_vote_session_id'] = str(uuid.uuid4())
+    return session['_vote_session_id']
 
 def record_vote(poll_id, option_ids, ip_address=None, user_agent=None, session_id=None):
     if ip_address is None:

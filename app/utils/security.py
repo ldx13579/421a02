@@ -15,7 +15,10 @@ def get_client_ip():
     return ip
 
 def get_session_id():
-    return session.sid if hasattr(session, 'sid') else str(id(session))
+    if '_vote_session_id' not in session:
+        import uuid
+        session['_vote_session_id'] = str(uuid.uuid4())
+    return session['_vote_session_id']
 
 def store_captcha(code):
     expire_seconds = current_app.config.get('CAPTCHA_EXPIRE_SECONDS', 300)
